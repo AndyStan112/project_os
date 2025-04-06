@@ -27,7 +27,7 @@ treasure_t get_treasure_details() {
         treasure.clue[len - 1] = '\0';
     }
     
-    printf("Enter Value");
+    printf("Enter Value: ");
     scanf("%d", &treasure.value);
     
     return treasure;
