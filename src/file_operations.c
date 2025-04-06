@@ -12,8 +12,18 @@
 
 int create_hunt_directory(const char *hunt_id) {
     struct stat st;
-    if (stat(hunt_id, &st) == -1) {
-        if (mkdir(hunt_id, 0755) == -1) {
+
+    if (stat("hunt", &st) == -1) {
+        if (mkdir("hunt", 0755) == -1) {
+            perror("mkdir hunt");
+            return -1;
+        }
+    }
+
+    char hunt_path[256];
+    snprintf(hunt_path, sizeof(hunt_path), "hunt/%s", hunt_id);
+    if (stat(hunt_path, &st) == -1) {
+        if (mkdir(hunt_path, 0755) == -1) {
             perror("mkdir");
             return -1;
         }
@@ -25,7 +35,7 @@ int create_symlink_for_log(const char *hunt_id) {
     char target[256];
     char linkname[256];
 
-    snprintf(target, sizeof(target), "%s/%s", hunt_id, LOG_FILE);
+    snprintf(target, sizeof(target), "hunt/%s/%s", hunt_id, LOG_FILE);
     snprintf(linkname, sizeof(linkname), "logged_hunt-%s", hunt_id);
 
     unlink(linkname);
@@ -39,7 +49,7 @@ int create_symlink_for_log(const char *hunt_id) {
 
 int add_treasure_to_file(const char *hunt_id, const treasure_t *treasure) {
     char filepath[256];
-    snprintf(filepath, sizeof(filepath), "%s/%s", hunt_id, TREASURE_FILE);
+    snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, TREASURE_FILE);
 
     int fd = open(filepath, O_WRONLY | O_APPEND | O_CREAT, 0644);
     if (fd < 0) {
@@ -60,7 +70,7 @@ int add_treasure_to_file(const char *hunt_id, const treasure_t *treasure) {
 
 int list_treasures(const char *hunt_id) {
     char filepath[256];
-    snprintf(filepath, sizeof(filepath), "%s/%s", hunt_id, TREASURE_FILE);
+    snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, TREASURE_FILE);
 
     struct stat st;
     if (stat(filepath, &st) == -1) {
@@ -97,7 +107,7 @@ int list_treasures(const char *hunt_id) {
 
 int view_treasure(const char *hunt_id, int treasure_id) {
     char filepath[256];
-    snprintf(filepath, sizeof(filepath), "%s/%s", hunt_id, TREASURE_FILE);
+    snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, TREASURE_FILE);
 
     int fd = open(filepath, O_RDONLY);
     if (fd < 0) {
@@ -131,7 +141,7 @@ int view_treasure(const char *hunt_id, int treasure_id) {
 
 int log_operation(const char *hunt_id, const char *operation) {
     char filepath[256];
-    snprintf(filepath, sizeof(filepath), "%s/%s", hunt_id, LOG_FILE);
+    snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, LOG_FILE);
 
     int fd = open(filepath, O_WRONLY | O_APPEND | O_CREAT, 0644);
     if (fd < 0) {
