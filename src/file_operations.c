@@ -10,6 +10,37 @@
 #define TREASURE_FILE "treasures.dat"
 #define LOG_FILE      "logged_hunt"
 
+
+int log_operation(const char *hunt_id, int treasure_id, const char *operation) {
+    char filepath[256];
+    snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, LOG_FILE);
+
+    int fd = open(filepath, O_WRONLY | O_APPEND | O_CREAT, 0644);
+    if (fd < 0) {
+        perror("open log file");
+        return -1;
+    }
+    
+    time_t now = time(NULL);
+    char timebuf[64];
+    strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    
+    char log_entry[512];
+    if (treasure_id == -1) {
+        snprintf(log_entry, sizeof(log_entry), "[%s] Performed action %s\n", timebuf, operation);
+    } else {
+        snprintf(log_entry, sizeof(log_entry), "[%s] Performed action %s on treasure with id=%d\n", timebuf, operation, treasure_id);
+    }
+    
+    if (write(fd, log_entry, strlen(log_entry)) != (ssize_t)strlen(log_entry)) {
+        perror("write log");
+        close(fd);
+        return -1;
+    }
+    close(fd);
+    return 0;
+}
+
 int create_hunt_directory(const char *hunt_id) {
     struct stat st;
 
@@ -28,6 +59,7 @@ int create_hunt_directory(const char *hunt_id) {
             return -1;
         }
     }
+    
     return 0;
 }
 
@@ -44,6 +76,7 @@ int create_symlink_for_log(const char *hunt_id) {
         perror("symlink");
         return -1;
     }
+
     return 0;
 }
 
@@ -63,8 +96,11 @@ int add_treasure_to_file(const char *hunt_id, const treasure_t *treasure) {
         close(fd);
         return -1;
     }
-
     close(fd);
+
+    if (log_operation(hunt_id, treasure->treasure_id, "add treasure to file") != 0)
+        fprintf(stderr, "Logging failed in add_treasure_to_file\n");
+
     return 0;
 }
 
@@ -100,8 +136,11 @@ int list_treasures(const char *hunt_id) {
         printf("  Clue: %s\n", t.clue);
         printf("-------------------------\n");
     }
-
     close(fd);
+
+    if (log_operation(hunt_id, -1, "list treasures") != 0)
+        fprintf(stderr, "Logging failed in list_treasures\n");
+
     return 0;
 }
 
@@ -130,12 +169,14 @@ int view_treasure(const char *hunt_id, int treasure_id) {
             break;
         }
     }
-
     close(fd);
 
-    if (!found) {
+    if (!found)
         return -1;
-    }
+
+    if (log_operation(hunt_id, treasure_id, "view treasure") != 0)
+        fprintf(stderr, "Logging failed in view_treasure\n");
+
     return 0;
 }
 
@@ -158,7 +199,6 @@ int remove_treasure(const char *hunt_id, int treasure_id) {
             found = 1;
             continue;
         }
-
         char *tmp = realloc(buffer, write_offset + sizeof(treasure_t));
         if (!tmp) {
             free(buffer);
@@ -166,12 +206,10 @@ int remove_treasure(const char *hunt_id, int treasure_id) {
             perror("realloc");
             return -1;
         }
-
         buffer = tmp;
         memcpy(buffer + write_offset, &t, sizeof(treasure_t));
         write_offset += sizeof(treasure_t);
     }
-
     close(fd);
 
     if (!found) {
@@ -192,37 +230,27 @@ int remove_treasure(const char *hunt_id, int treasure_id) {
         free(buffer);
         return -1;
     }
-
     close(out);
     free(buffer);
+
+    if (log_operation(hunt_id, treasure_id, "remove") != 0)
+        fprintf(stderr, "Logging failed in remove_treasure\n");
+
     return 0;
 }
 
+int remove_hunt(const char *hunt_id) {
+    char path[256];
 
-
-int log_operation(const char *hunt_id,int treasure_id, const char *operation) {
-    char filepath[256];
-    snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, LOG_FILE);
-
-    int fd = open(filepath, O_WRONLY | O_APPEND | O_CREAT, 0644);
-    if (fd < 0) {
-        perror("open log file");
-        return -1;
-    }
-
-    time_t now = time(NULL);
-    char timebuf[64];
-    strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", localtime(&now));
-
-    char log_entry[512];
-    snprintf(log_entry, sizeof(log_entry), "[%s] Performed action %s on on treasure with id=%d\n", timebuf, operation, treasure_id);
-
-    if (write(fd, log_entry, strlen(log_entry)) != (ssize_t)strlen(log_entry)) {
-        perror("write log");
+    snprintf(path, sizeof(path), "hunt/%s/%s", hunt_id, TREASURE_FILE);
+    int fd = open(path, O_WRONLY | O_TRUNC);
+    if (fd >= 0)
         close(fd);
-        return -1;
-    }
 
-    close(fd);
+    snprintf(path, sizeof(path), "hunt/%s/%s", hunt_id, LOG_FILE);
+    fd = open(path, O_WRONLY | O_TRUNC);
+    if (fd >= 0)
+        close(fd);
+
     return 0;
 }

@@ -16,4 +16,6 @@ int view_treasure(const char *hunt_id, int treasure_id);
 int log_operation(const char *hunt_id,int treasure_id, const char *operation);
 
 int remove_treasure(const char *hunt_id, int treasure_id);
+
+int remove_hunt(const char *hunt_id);
 #endif
