@@ -139,7 +139,68 @@ int view_treasure(const char *hunt_id, int treasure_id) {
     return 0;
 }
 
-int log_operation(const char *hunt_id, const char *operation) {
+int remove_treasure(const char *hunt_id, int treasure_id) {
+    char filepath[256];
+    snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, TREASURE_FILE);
+
+    int fd = open(filepath, O_RDONLY);
+    if (fd < 0) {
+        perror("open treasure file");
+        return -1;
+    }
+
+    treasure_t t;
+    char *buffer = NULL;
+    int found = 0;
+    ssize_t write_offset = 0;
+    while (read(fd, &t, sizeof(treasure_t)) == sizeof(treasure_t)) {
+        if (t.treasure_id == treasure_id) {
+            found = 1;
+            continue;
+        }
+
+        char *tmp = realloc(buffer, write_offset + sizeof(treasure_t));
+        if (!tmp) {
+            free(buffer);
+            close(fd);
+            perror("realloc");
+            return -1;
+        }
+
+        buffer = tmp;
+        memcpy(buffer + write_offset, &t, sizeof(treasure_t));
+        write_offset += sizeof(treasure_t);
+    }
+
+    close(fd);
+
+    if (!found) {
+        free(buffer);
+        return -1;
+    }
+
+    int out = open(filepath, O_WRONLY | O_TRUNC);
+    if (out < 0) {
+        perror("open treasure file");
+        free(buffer);
+        return -1;
+    }
+
+    if (write(out, buffer, write_offset) != write_offset) {
+        perror("write treasure");
+        close(out);
+        free(buffer);
+        return -1;
+    }
+
+    close(out);
+    free(buffer);
+    return 0;
+}
+
+
+
+int log_operation(const char *hunt_id,int treasure_id, const char *operation) {
     char filepath[256];
     snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, LOG_FILE);
 
@@ -154,7 +215,7 @@ int log_operation(const char *hunt_id, const char *operation) {
     strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
     char log_entry[512];
-    snprintf(log_entry, sizeof(log_entry), "[%s] %s\n", timebuf, operation);
+    snprintf(log_entry, sizeof(log_entry), "[%s] Performed action %s on on treasure with id=%d\n", timebuf, operation, treasure_id);
 
     if (write(fd, log_entry, strlen(log_entry)) != (ssize_t)strlen(log_entry)) {
         perror("write log");

@@ -9,6 +9,8 @@ static void print_usage(const char *prog_name) {
     printf("  %s add <hunt_id>\n", prog_name);
     printf("  %s list <hunt_id>\n", prog_name);
     printf("  %s view <hunt_id> <treasure_id>\n", prog_name);
+    printf("  %s remove_treasure <hunt_id> <id>\n", prog_name);
+
 }
 
 int main(int argc, char *argv[]) {
@@ -33,7 +35,7 @@ int main(int argc, char *argv[]) {
 
         treasure_t new_treasure = get_treasure_details();
         if (add_treasure_to_file(hunt_id, &new_treasure) == 0) {
-            log_operation(hunt_id, "Added treasure");
+            log_operation(hunt_id,new_treasure.treasure_id, "add");
             printf("Treasure added successfully.\n");
         } else {
             fprintf(stderr, "Error: Could not add treasure.\n");
@@ -57,7 +59,21 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-    } else {
+    }else if (strcmp(command, "remove_treasure") == 0){
+        if (argc < 4) {
+            print_usage(argv[0]);
+            return 1;
+        }
+        int treasure_id = atoi(argv[3]);
+        if (remove_treasure(hunt_id, treasure_id) != 0) {
+            fprintf(stderr, "Error: Treasure with ID %d not found.\n", treasure_id);
+            return 1;
+        }
+        else {
+            log_operation(hunt_id,treasure_id, "remove");
+        }
+    }
+     else {
         
         print_usage(argv[0]);
         return 1;
