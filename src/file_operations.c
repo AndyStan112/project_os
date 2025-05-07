@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <string.h>
+#include <dirent.h>
+#include <unistd.h>
 
 #define TREASURE_FILE "treasures.dat"
 #define LOG_FILE      "logged_hunt"
@@ -239,18 +241,64 @@ int remove_treasure(const char *hunt_id, int treasure_id) {
     return 0;
 }
 
+
 int remove_hunt(const char *hunt_id) {
     char path[256];
 
     snprintf(path, sizeof(path), "hunt/%s/%s", hunt_id, TREASURE_FILE);
-    int fd = open(path, O_WRONLY | O_TRUNC);
-    if (fd >= 0)
-        close(fd);
+    if (unlink(path) != 0) {
+        perror("unlink treasures.dat");
+    }
 
     snprintf(path, sizeof(path), "hunt/%s/%s", hunt_id, LOG_FILE);
-    fd = open(path, O_WRONLY | O_TRUNC);
-    if (fd >= 0)
-        close(fd);
+    if (unlink(path) != 0) {
+        perror("unlink logged_hunt");
+    }
 
+    snprintf(path, sizeof(path), "hunt/%s", hunt_id);
+    if (rmdir(path) != 0) {
+        perror("rmdir hunt dir");
+    }
+
+    snprintf(path, sizeof(path), "logged_hunt-%s", hunt_id);
+    unlink(path);
+
+    return 0;
+}
+
+
+int list_hunts() {
+    DIR *dir = opendir("hunt");
+    if (!dir) {
+        perror("opendir hunt");
+        return -1;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir))) {
+        if (entry->d_type == DT_DIR &&
+            strcmp(entry->d_name, ".") != 0 &&
+            strcmp(entry->d_name, "..") != 0) {
+
+            char filepath[512];
+            snprintf(filepath, sizeof(filepath), "hunt/%s/treasures.dat", entry->d_name);
+            int fd = open(filepath, O_RDONLY);
+            if (fd < 0) {
+                continue;
+            }
+
+            int count = 0;
+            treasure_t t;
+            while (read(fd, &t, sizeof(treasure_t)) == sizeof(treasure_t)) {
+                count++;
+            }
+            close(fd);
+
+            printf("Hunt ID: %s\n", entry->d_name);
+            printf("  Total treasures: %d\n", count);
+        }
+    }
+
+    closedir(dir);
     return 0;
 }
