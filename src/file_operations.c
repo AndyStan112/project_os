@@ -1,4 +1,5 @@
 #include "file_operations.h"
+#include "shared.h"
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -8,12 +9,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#define TREASURE_FILE "treasures.dat"
-#define LOG_FILE "logged_hunt"
-
 int log_operation(const char *hunt_id, int treasure_id, const char *operation) {
   char filepath[256];
-  snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, LOG_FILE);
+  snprintf(filepath, sizeof(filepath), "%s/%s/%s", HUNT_DIR, hunt_id, LOG_FILE);
 
   int fd = open(filepath, O_WRONLY | O_APPEND | O_CREAT, 0644);
   if (fd < 0) {
@@ -47,18 +45,18 @@ int log_operation(const char *hunt_id, int treasure_id, const char *operation) {
 int create_hunt_directory(const char *hunt_id) {
   struct stat st;
 
-  if (stat("hunt", &st) == -1) {
-    if (mkdir("hunt", 0755) == -1) {
+  if (stat(HUNT_DIR, &st) == -1) {
+    if (mkdir(HUNT_DIR, 0755) == -1) {
       perror("mkdir hunt");
       return -1;
     }
   }
 
   char hunt_path[256];
-  snprintf(hunt_path, sizeof(hunt_path), "hunt/%s", hunt_id);
+  snprintf(hunt_path, sizeof(hunt_path), "%s/%s", HUNT_DIR, hunt_id);
   if (stat(hunt_path, &st) == -1) {
     if (mkdir(hunt_path, 0755) == -1) {
-      perror("mkdir");
+      perror("mkdir hunt_id");
       return -1;
     }
   }
@@ -70,7 +68,7 @@ int create_symlink_for_log(const char *hunt_id) {
   char target[256];
   char linkname[256];
 
-  snprintf(target, sizeof(target), "hunt/%s/%s", hunt_id, LOG_FILE);
+  snprintf(target, sizeof(target), "%s/%s/%s", HUNT_DIR, hunt_id, LOG_FILE);
   snprintf(linkname, sizeof(linkname), "logged_hunt-%s", hunt_id);
 
   unlink(linkname);
@@ -85,7 +83,8 @@ int create_symlink_for_log(const char *hunt_id) {
 
 int add_treasure_to_file(const char *hunt_id, const treasure_t *treasure) {
   char filepath[256];
-  snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, TREASURE_FILE);
+  snprintf(filepath, sizeof(filepath), "%s/%s/%s", HUNT_DIR, hunt_id,
+           TREASURE_FILE);
 
   int fd = open(filepath, O_WRONLY | O_APPEND | O_CREAT, 0644);
   if (fd < 0) {
@@ -93,8 +92,7 @@ int add_treasure_to_file(const char *hunt_id, const treasure_t *treasure) {
     return -1;
   }
 
-  ssize_t bytes_written = write(fd, treasure, sizeof(treasure_t));
-  if (bytes_written != sizeof(treasure_t)) {
+  if (write(fd, treasure, sizeof(treasure_t)) != sizeof(treasure_t)) {
     perror("write treasure");
     close(fd);
     return -1;
@@ -110,7 +108,8 @@ int add_treasure_to_file(const char *hunt_id, const treasure_t *treasure) {
 
 int list_treasures(const char *hunt_id) {
   char filepath[256];
-  snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, TREASURE_FILE);
+  snprintf(filepath, sizeof(filepath), "%s/%s/%s", HUNT_DIR, hunt_id,
+           TREASURE_FILE);
 
   struct stat st;
   if (stat(filepath, &st) == -1) {
@@ -150,7 +149,8 @@ int list_treasures(const char *hunt_id) {
 
 int view_treasure(const char *hunt_id, int treasure_id) {
   char filepath[256];
-  snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, TREASURE_FILE);
+  snprintf(filepath, sizeof(filepath), "%s/%s/%s", HUNT_DIR, hunt_id,
+           TREASURE_FILE);
 
   int fd = open(filepath, O_RDONLY);
   if (fd < 0) {
@@ -186,7 +186,8 @@ int view_treasure(const char *hunt_id, int treasure_id) {
 
 int remove_treasure(const char *hunt_id, int treasure_id) {
   char filepath[256];
-  snprintf(filepath, sizeof(filepath), "hunt/%s/%s", hunt_id, TREASURE_FILE);
+  snprintf(filepath, sizeof(filepath), "%s/%s/%s", HUNT_DIR, hunt_id,
+           TREASURE_FILE);
 
   int fd = open(filepath, O_RDONLY);
   if (fd < 0) {
@@ -246,20 +247,17 @@ int remove_treasure(const char *hunt_id, int treasure_id) {
 int remove_hunt(const char *hunt_id) {
   char path[256];
 
-  snprintf(path, sizeof(path), "hunt/%s/%s", hunt_id, TREASURE_FILE);
-  if (unlink(path) != 0) {
+  snprintf(path, sizeof(path), "%s/%s/%s", HUNT_DIR, hunt_id, TREASURE_FILE);
+  if (unlink(path) != 0)
     perror("unlink treasures.dat");
-  }
 
-  snprintf(path, sizeof(path), "hunt/%s/%s", hunt_id, LOG_FILE);
-  if (unlink(path) != 0) {
+  snprintf(path, sizeof(path), "%s/%s/%s", HUNT_DIR, hunt_id, LOG_FILE);
+  if (unlink(path) != 0)
     perror("unlink logged_hunt");
-  }
 
-  snprintf(path, sizeof(path), "hunt/%s", hunt_id);
-  if (rmdir(path) != 0) {
+  snprintf(path, sizeof(path), "%s/%s", HUNT_DIR, hunt_id);
+  if (rmdir(path) != 0)
     perror("rmdir hunt dir");
-  }
 
   snprintf(path, sizeof(path), "logged_hunt-%s", hunt_id);
   unlink(path);
@@ -268,7 +266,7 @@ int remove_hunt(const char *hunt_id) {
 }
 
 int list_hunts() {
-  DIR *dir = opendir("hunt");
+  DIR *dir = opendir(HUNT_DIR);
   if (!dir) {
     perror("opendir hunt");
     return -1;
@@ -280,18 +278,16 @@ int list_hunts() {
         strcmp(entry->d_name, "..") != 0) {
 
       char filepath[512];
-      snprintf(filepath, sizeof(filepath), "hunt/%s/treasures.dat",
-               entry->d_name);
+      snprintf(filepath, sizeof(filepath), "%s/%s/%s", HUNT_DIR, entry->d_name,
+               TREASURE_FILE);
       int fd = open(filepath, O_RDONLY);
-      if (fd < 0) {
+      if (fd < 0)
         continue;
-      }
 
       int count = 0;
       treasure_t t;
-      while (read(fd, &t, sizeof(treasure_t)) == sizeof(treasure_t)) {
+      while (read(fd, &t, sizeof(treasure_t)) == sizeof(treasure_t))
         count++;
-      }
       close(fd);
 
       printf("Hunt ID: %s\n", entry->d_name);

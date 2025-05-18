@@ -1,5 +1,6 @@
 #include "file_operations.h"
 #include "shared.h"
+#include "treasure.h"
 #include <dirent.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -52,7 +53,7 @@ int main() {
         list_hunts();
 
       } else if (strncmp(command, "list_treasures", 14) == 0) {
-        char hunt_id[128];
+        char hunt_id[MAX_HUNT_ID_LEN];
         if (sscanf(command, "list_treasures %s", hunt_id) == 1) {
           list_treasures(hunt_id);
         } else {
@@ -60,7 +61,7 @@ int main() {
         }
 
       } else if (strncmp(command, "view_treasure", 13) == 0) {
-        char hunt_id[128];
+        char hunt_id[MAX_HUNT_ID_LEN];
         int treasure_id;
         if (sscanf(command, "view_treasure %s %d", hunt_id, &treasure_id) ==
             2) {
