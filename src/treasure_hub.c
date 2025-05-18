@@ -14,6 +14,19 @@ pid_t monitor_pid = -1;
 int monitor_pipe_fd = -1;
 int monitor_terminating = 0;
 
+static void print_help(void) {
+  puts("Available commands:");
+  puts("  start_monitor            - Start the monitor process");
+  puts("  stop_monitor             - Send stop signal to monitor");
+  puts("  list_hunts               - List all available hunts");
+  puts("  list_treasures <hunt_id> - List treasures in a hunt");
+  puts("  view_treasure <hunt_id> <treasure_id> - View specific treasure");
+  puts("  calculate_score          - Print scores for all hunts");
+  puts("  help                     - Show this help message");
+  puts(
+      "  exit                     - Exit the hub (only if monitor is stopped)");
+}
+
 static void drain_monitor_output(void) {
   if (monitor_pipe_fd < 0)
     return;
@@ -126,6 +139,8 @@ void handle_command(const char *input) {
       return;
     }
     exit(0);
+  } else if (strcmp(input, "help") == 0) {
+    print_help();
   } else if (strncmp(input, "list_hunts", 10) == 0 ||
              strncmp(input, "list_treasures", 14) == 0 ||
              strncmp(input, "view_treasure", 13) == 0) {
@@ -134,6 +149,7 @@ void handle_command(const char *input) {
     calculate_scores();
   } else {
     printf("Unknown command.\n");
+    print_help();
   }
 }
 
