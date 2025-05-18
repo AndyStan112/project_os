@@ -1,3 +1,8 @@
 logged_*
 *.dat
 treasure_hunt
+command.txt
+monitor
+treasure_hub
+*.zip
+score_calc
