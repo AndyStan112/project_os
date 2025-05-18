@@ -55,10 +55,10 @@ void start_monitor() {
     perror("fork");
   } else if (pid == 0) {
     setsid();
-    close(pfd[0]);
-    dup2(pfd[1], STDOUT_FILENO);
-    dup2(pfd[1], STDERR_FILENO);
-    close(pfd[1]);
+    close(pfd[PIPE_READ]);
+    dup2(pfd[PIPE_WRITE], STDOUT_FILENO);
+    dup2(pfd[PIPE_WRITE], STDERR_FILENO);
+    close(pfd[PIPE_WRITE]);
 
     close(STDIN_FILENO);
     fprintf(stderr, "Child: stdin closed. Executing monitor...\n");
@@ -67,8 +67,8 @@ void start_monitor() {
     perror("execl");
     exit(1);
   } else {
-    close(pfd[1]);
-    monitor_pipe_fd = pfd[0];
+    close(pfd[PIPE_WRITE]);
+    monitor_pipe_fd = pfd[PIPE_READ];
     int flags = fcntl(monitor_pipe_fd, F_GETFL, 0);
     fcntl(monitor_pipe_fd, F_SETFL, flags | O_NONBLOCK);
     monitor_pid = pid;
@@ -132,22 +132,22 @@ static void run_score_for(const char *hunt_id) {
     perror("fork score");
     return;
   } else if (pid == 0) {
-    close(pfd[0]);
-    dup2(pfd[1], STDOUT_FILENO);
-    dup2(pfd[1], STDERR_FILENO);
-    close(pfd[1]);
+    close(pfd[PIPE_READ]);
+    dup2(pfd[PIPE_WRITE], STDOUT_FILENO);
+    dup2(pfd[PIPE_WRITE], STDERR_FILENO);
+    close(pfd[PIPE_WRITE]);
     execl("./score_calc", "score_calc", hunt_id, NULL);
     perror("execl score_calc");
     _exit(1);
   }
-  close(pfd[1]);
+  close(pfd[PIPE_WRITE]);
   printf("\n===== Scores for hunt \"%s\" =====\n", hunt_id);
   fflush(stdout);
   char buf[256];
   ssize_t n;
-  while ((n = read(pfd[0], buf, sizeof(buf))) > 0)
+  while ((n = read(pfd[PIPE_READ], buf, sizeof(buf))) > 0)
     write(STDOUT_FILENO, buf, (size_t)n);
-  close(pfd[0]);
+  close(pfd[PIPE_READ]);
   waitpid(pid, NULL, 0);
   puts("================================");
   fflush(stdout);
