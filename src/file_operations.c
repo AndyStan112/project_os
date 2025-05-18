@@ -146,7 +146,6 @@ int list_treasures(const char *hunt_id) {
 
   return 0;
 }
-
 int view_treasure(const char *hunt_id, int treasure_id) {
   char filepath[256];
   snprintf(filepath, sizeof(filepath), "%s/%s/%s", HUNT_DIR, hunt_id,
@@ -162,15 +161,17 @@ int view_treasure(const char *hunt_id, int treasure_id) {
   int found = 0;
   while (read(fd, &t, sizeof(treasure_t)) == sizeof(treasure_t)) {
     if (t.treasure_id == treasure_id) {
-      printf("Treasure Details:\n");
+      if (!found) {
+        printf("Treasure Details:\n");
+        found = 1;
+      }
       printf("  ID: %d\n", t.treasure_id);
       printf("  User: %s\n", t.username);
       printf("  Latitude: %.6f\n", t.latitude);
       printf("  Longitude: %.6f\n", t.longitude);
       printf("  Value: %d\n", t.value);
       printf("  Clue: %s\n", t.clue);
-      found = 1;
-      break;
+      printf("-------------------------\n");
     }
   }
   close(fd);
